@@ -3,9 +3,12 @@
 import sys
 
 def filetolist(filename):
+    result = []
     with open(filename) as f:
-        result = [x.rstrip("\n") for x in f.readlines()]
-        return result
+        for line in f:
+            cols = line.split("\t")
+            result.append(cols[0].rstrip("\n"))
+    return result
 
 def alignlists(list1, list2):
     col1 = iter(sorted(list1))
