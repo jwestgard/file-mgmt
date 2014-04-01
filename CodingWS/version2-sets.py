@@ -28,6 +28,5 @@ print("{0} files are not found in local copies.".format(len(not_local)))
 # Save the results of the comparison to two files.
 with open('results/not_prangeasset.txt', 'w') as f:
     f.writelines(x + "\n" for x in sorted(not_local))
-    
 with open('results/not_fedora.txt', 'w') as f:
     f.writelines(x + "\n" for x in sorted(not_in_fedora))
