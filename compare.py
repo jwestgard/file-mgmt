@@ -1,4 +1,4 @@
-#! usr/bin/python
+#!/usr/bin/env python3
 
 def alignlists(list1, list2):
     col1 = iter(sorted(list1))
