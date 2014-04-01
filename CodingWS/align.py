@@ -44,4 +44,4 @@ for line in open('pcbinfedora.txt'):
 result = alignlists(local_set, fedora_set)
 
 for i in result:
-	print(i)
+    print(i)
