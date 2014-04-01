@@ -9,7 +9,7 @@ def alignlists(list1, list2):
     while col1 and col2:
         if x == None and y == None:
             break
-        if x == None:
+        elif x == None:
             while y:
                 result.append("\t" + str(y))
                 y = next(col2, None)
@@ -27,6 +27,9 @@ def alignlists(list1, list2):
         elif x < y:
             result.append(str(x) + "\t")
             x = next(col1, None)
+        else:
+            print("Something went wrong!")
+            break
     return result
 
 local_set = set()
