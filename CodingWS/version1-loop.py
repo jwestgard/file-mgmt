@@ -1,4 +1,4 @@
-#! usr/bin/python
+#!/usr/bin/env python3
 
 c1 = 0
 c2 = 0
@@ -7,11 +7,11 @@ fedora_assets = []
 result = []
 result2 = []
 
-for line in open('all_prange_filenames_with_paths.txt'):
+for line in open('prangeasset.txt'):
     cols = line.rstrip("\n").split("\t")
     file_assets.append(cols[0])
 
-for line in open('all_prange-pcbinfedora.txt'):
+for line in open('pcbinfedora.txt'):
     fedora_assets.append(line.rstrip("\n"))
     
 print("\nTotal File Assets: {0} files".format(len(file_assets)))
