@@ -6,7 +6,7 @@ def filetolist(filename):
     result = []
     with open(filename) as f:
         for line in f:
-            cols = line.split("\t")
+            cols = line.split(".")
             result.append(cols[0].rstrip("\n"))
     return result
 
