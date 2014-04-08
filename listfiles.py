@@ -1,33 +1,64 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import os
-import sys
+from __future__ import print_function
 
-def listfiles(dir):
+import os, sys
+
+def listfiles(path):
     result = []
-    print("Checking {0}".format(dir))
-    for path, dnames, fnames in os.walk(dir):
-        print(path)
-        for f in fnames:
-#           print("{0}\t{1}\t{2}".format(f, os.path.getsize(os.path.join(path, f)), path))
-            result.append(f)
-    return result
+    # counter for adding up total bytes
+    totalbytes = 0
+    print("Checking {0}".format(path))
+    for root, dirs, files in os.walk(path):
+        # prune directories beginning with dot
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        # prune files beginning with dot
+        files[:] = [f for f in files if not f.startswith('.')]
+        # if a extension filter has been specified, invoke function to prune files lacking that extension
+        try:
+            files[:] = filter_by_ext(files)
+        except IndexError:
+            pass
+        # for each file remaining, get size in byes, list filename, path, bytes
+        for f in files:
+            bytes = os.path.getsize(os.path.join(root, f))
+            result.append("{0}\t{1}\t{2}".format(f, root, bytes))
+            totalbytes += bytes
+    return result, totalbytes
     
-def listjpgs(files):
-	result = []
-	for f in files:
-		if f.endswith(".jpg"):
-			result.append(f)
-	return result
+def filter_by_ext(files):
+    ext = sys.argv[2]
+    result = []
+    for f in files:
+        if f.endswith(ext):
+            result.append(f)
+        else:
+            pass
+    return result
+
+def human_readable_size(b):
+    bytes = int(b)
+    if bytes >= 2**40:
+        return "{0} TB".format(round(bytes / 2**40), 2)
+    elif bytes >= 2**30:
+        return "{0} GB".format(round(bytes / 2**30), 2)
+    elif bytes >= 2**20:
+        return "{0} MB".format(round(bytes / 2**20), 2)
+    else:
+        return "{0} KB".format(round(bytes / 2**10), 2)
 
 def main():
-    allfiles = listfiles(sys.argv[1])
-    jpgs = listjpgs(allfiles)
-    with open('KAPjpgfiles.txt', 'w') as f:
-        for x in jpgs:
+    try:
+        ext = sys.argv[2]
+    except IndexError:
+        ext = "all"
+    filelist, sizeinbytes = listfiles(sys.argv[1])
+    with open('result.txt', 'w') as f:
+        for x in filelist:
             print(x)
             f.write("{0}\n".format(x))
-    print("Done! {} JPEG files found.".format(len(jpgs)))
+    print("Done! {0} files found with extension '{1}'.".format(len(filelist), ext))
+    print("Total size of {0} files = {1}.".format(ext, human_readable_size(sizeinbytes)))
     
 if __name__ == "__main__":
     main()
