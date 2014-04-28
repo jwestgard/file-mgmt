@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import os, sys
+from PIL import Image
 
 def listfiles(path):
     result = []
@@ -21,8 +22,9 @@ def listfiles(path):
             pass
         # for each file remaining, get size in byes, list filename, path, bytes
         for f in files:
+            dpi = get_exif(f)
             bytes = os.path.getsize(os.path.join(root, f))
-            result.append("{0}\t{1}\t{2}".format(f, root, bytes))
+            result.append("{0}\t{1}\t{2}\t{3}".format(f, root, bytes, dpi))
             totalbytes += bytes
     return result, totalbytes
     
@@ -38,6 +40,7 @@ def filter_by_ext(files):
 
 def human_readable_size(b):
     bytes = int(b)
+    print("Bytes: {0}".format(bytes))
     if bytes >= 2**40:
         return "{0} TB".format(round(bytes / 2**40), 2)
     elif bytes >= 2**30:
@@ -46,6 +49,11 @@ def human_readable_size(b):
         return "{0} MB".format(round(bytes / 2**20), 2)
     else:
         return "{0} KB".format(round(bytes / 2**10), 2)
+
+def get_exif(filename):
+    img = Image.open(filename)
+    metadata = img._getexif()
+    return metadata[283]
 
 def main():
     try:
