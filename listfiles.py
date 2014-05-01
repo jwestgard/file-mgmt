@@ -9,7 +9,7 @@ def listfiles(path):
     result = []
     # counter for adding up total bytes
     totalbytes = 0
-    print("Checking {0}".format(path))
+    print("Checking {0} ...".format(path))
     for root, dirs, files in os.walk(path):
         # prune directories beginning with dot
         dirs[:] = [d for d in dirs if not d.startswith('.')]
@@ -17,19 +17,19 @@ def listfiles(path):
         files[:] = [f for f in files if not f.startswith('.')]
         # if a extension filter has been specified, invoke function to prune files lacking that extension
         try:
-            files[:] = filter_by_ext(files)
+            files[:] = filter_by_ext(files, sys.argv[2])
         except IndexError:
             pass
         # for each file remaining, get size in byes, list filename, path, bytes
         for f in files:
-            dpi = get_exif(f)
-            bytes = os.path.getsize(os.path.join(root, f))
-            result.append("{0}\t{1}\t{2}\t{3}".format(f, root, bytes, dpi))
+            path = os.path.join(root, f)
+            dpi = get_dpi(path)
+            bytes = os.path.getsize(path)
+            result.append("{0}\t{1}\t{2}".format(path, bytes, dpi))
             totalbytes += bytes
     return result, totalbytes
     
-def filter_by_ext(files):
-    ext = sys.argv[2]
+def filter_by_ext(files, ext):
     result = []
     for f in files:
         if f.endswith(ext):
@@ -50,10 +50,14 @@ def human_readable_size(b):
     else:
         return "{0} KB".format(round(bytes / 2**10), 2)
 
-def get_exif(filename):
+def get_dpi(filename):
     img = Image.open(filename)
-    metadata = img._getexif()
-    return metadata[283]
+    metadata = img.info
+    try:
+        result = metadata['dpi']
+    except:
+        result = "Not found"
+    return result
 
 def main():
     try:
