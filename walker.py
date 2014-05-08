@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-import os, sys, json, subprocess
+import datetime, os, sys, json, subprocess
 
 def count_by_ext(files):
     result = {}
@@ -14,8 +14,9 @@ def count_by_ext(files):
             result[ext] = 1
     return result
 
-def exec_shell_command(f):
+def exec_shell_command(i, f):
     cmd = ['exiftool', '-j', '-filetype', '-filesize', '-XResolution', '-YResolution', '-imagewidth', '-imageheight', f]
+    print("{0}:".format(i+1), " ".join([x for x in cmd]))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     j = p.communicate()[0].decode("utf-8")
     result = json.loads(j)[0]
@@ -70,11 +71,18 @@ def is_number(s):
     except ValueError:
         return False
     
+def modification_time(filename):
+    t = os.path.getmtime(filename)
+    return datetime.datetime.fromtimestamp(t)
+
 def write_report(data):
+    fieldlist = ['fullpath', 'bytes', 'modtime', 'XResolution',
+                  'YResolution', 'ImageWidth', 'ImageHeight']
     result = []
+    result.append([x.upper() for x in fieldlist])
     for item in data:
         line =[]
-        for x in ['filename', 'bytes', 'XResolution', 'YResolution']:
+        for x in fieldlist:
             try:
                 line.append(item[x])
             except KeyError:
@@ -88,7 +96,10 @@ def pretty_print(table):
     table_width = 2 + (number_cols * column_width) + ((number_cols - 1) * 3)
     border =  "═" * table_width
     print("\n╔" + border + "╗")
-    header = ["COL {0}".format(x) for x in range(1, (number_cols + 1))]
+    # This line prints generic column numbers as the header row
+    # header = ["COL {0}".format(x) for x in range(1, (number_cols + 1))]
+    # This line uses the values in the first row of the data as the header
+    header = table.pop(0)
     print("║ {0} ║".format(" ╎ ".join(cell.center(column_width) for cell in header)))
     print("╟" + "━" * table_width + "╢")
     for row in table:
@@ -142,24 +153,42 @@ def pretty_print_dict(data):
 def total_bytes(files):
     return sum(f['bytes'] for f in files)
     
-def main():
-    searchroot = os.path.dirname(sys.argv[1])
-    print("\n\n*** FILE REPORTER ***")
-    print("\nChecking the following directory: {0} ...".format(searchroot))
-    filelist = listfiles(searchroot)
-    for f in filelist:
-        additional_meta = exec_shell_command(f['fullpath'])
-        f.update(additional_meta)
+def directory_report(root, d):
+    fullpath = os.path.join(root, d)
+    print("\nChecking the following directory: {0} ...".format(fullpath))
+    # print full list of files arranged by subdirs
+    filelist = listfiles(fullpath)
     total = total_bytes(filelist)
     print("\nTotal: {0} bytes, or {1} for {2} files.".format(
         total, human_readable_size(total), len(filelist)))
     counts = count_by_ext([f['filename'] for f in filelist])
     count_display = ", ".join(".{0} ({1})".format(
         k, counts[k]) for k in sorted(counts.keys()))
-    print("Extensions: {0}\n".format(count_display))
+    print("Extensions: {0}".format(count_display))
+    # print out the shell commands being run on each file as they are run
+    print("\nPerforming metadata analysis on {0} files ...\n".format(len(filelist)))
+    for i, f in enumerate(filelist):
+        f.update({'modtime': modification_time(f['fullpath'])})
+        additional_meta = exec_shell_command(i, f['fullpath'])
+        f.update(additional_meta)
+    # print a final report on the files in the directory searched
+    print("\nDirectory Report on {0}:".format(fullpath))
     report = write_report(filelist)
-    pretty_print(report)
-    pretty_print_dict(filelist)
+    report_to_file(d, report)
+    
+def report_to_file(dirname, data):
+    outpath = '/Users/westgard/Desktop/results/{0}.txt'.format(dirname)
+    with open(outpath, 'w') as outfile:
+        for line in data:
+            outfile.write("\t".join([str(i) for i in line]))
+            outfile.write("\n")
 
 if __name__ == "__main__":
-    main()
+    print("\n\n*** FILE REPORTER ***")
+    root = sys.argv[1]
+    subdirs = os.walk(root).__next__()[1]
+    dirs_to_search = subdirs
+    for d in dirs_to_search:
+        directory_report(root, d)
+        print("\n", "*" * 100, "\n")
+        
