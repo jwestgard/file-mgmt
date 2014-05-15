@@ -1,7 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 import datetime, os, sys, json, subprocess
 
 def count_by_ext(files):
@@ -15,12 +14,13 @@ def count_by_ext(files):
     return result
 
 def exec_shell_command(i, f):
-    cmd = ['exiftool', '-j', '-filetype', '-filesize', '-XResolution', '-YResolution', '-imagewidth', '-imageheight', f]
+    cmd = ['exiftool', '-j', '-filetype', '-filesize', '-XResolution',
+           '-YResolution', '-imagewidth', '-imageheight', f]
+    # print out the shell commands being run on each file as they are run
     print("{0}:".format(i+1), " ".join([x for x in cmd]))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     j = p.communicate()[0].decode("utf-8")
     result = json.loads(j)[0]
-    del result['SourceFile']
     return result
 
 def filter_by_ext(files, ext):
@@ -31,6 +31,9 @@ def filter_by_ext(files, ext):
         else:
             pass
     return result
+
+def filter_completed_dirs(dirs, completed_dirs):
+    return [d for d in dirs if d not in completed_dirs]
 
 def human_readable_size(b):
     bytes = int(b)
@@ -43,7 +46,7 @@ def human_readable_size(b):
     else:
         return "{0} KB".format(round(bytes / 2**10), 2)
 
-def listfiles(path):
+def listfiles(path, filter_ext):
     result = []
     for root, dirs, files in os.walk(path):
         print("\n", root)
@@ -52,16 +55,12 @@ def listfiles(path):
         # prune files beginning with dot
         files[:] = [f for f in files if not f.startswith('.')]
         try:
-            files = filter_by_ext(files, sys.argv[2])
+            files = filter_by_ext(files, filter_ext)
         except IndexError:
             pass
         for f in files:
-            metadata = {}
             print("  •", f)
-            metadata['filename'] = f
-            metadata['fullpath'] = os.path.join(root, f)
-            metadata['bytes'] = os.path.getsize(metadata['fullpath'])
-            result.append(metadata)
+            result.append(os.path.join(root, f))
     return result
 
 def is_number(s):
@@ -74,21 +73,6 @@ def is_number(s):
 def modification_time(filename):
     t = os.path.getmtime(filename)
     return datetime.datetime.fromtimestamp(t)
-
-def write_report(data):
-    fieldlist = ['fullpath', 'bytes', 'modtime', 'XResolution',
-                  'YResolution', 'ImageWidth', 'ImageHeight']
-    result = []
-    result.append([x.upper() for x in fieldlist])
-    for item in data:
-        line =[]
-        for x in fieldlist:
-            try:
-                line.append(item[x])
-            except KeyError:
-                line.append("[none]")
-        result.append(line)
-    return result        
 
 def pretty_print(table):
     number_cols = max([len(line) for line in table])
@@ -150,45 +134,61 @@ def pretty_print_dict(data):
         print("║ {0} ║".format(" ╎ ".join(x for x in line)))
     print("╚" + border + "╝\n")
 
-def total_bytes(files):
-    return sum(f['bytes'] for f in files)
-    
-def directory_report(root, d):
+def report_on_directory(root, d, outdir):
     fullpath = os.path.join(root, d)
     print("\nChecking the following directory: {0} ...".format(fullpath))
+    # output file path
+    out_temp = os.path.join(outdir, 'temp.txt')
+    out_final = os.path.join(outdir, '{0}.txt'.format(d))
+    # metadata items to report on each file
+    header = ['fullpath', 'bytes', 'modtime', 'XResolution',
+              'YResolution', 'ImageWidth', 'ImageHeight']
     # print full list of files arranged by subdirs
-    filelist = listfiles(fullpath)
-    total = total_bytes(filelist)
-    print("\nTotal: {0} bytes, or {1} for {2} files.".format(
-        total, human_readable_size(total), len(filelist)))
-    counts = count_by_ext([f['filename'] for f in filelist])
-    count_display = ", ".join(".{0} ({1})".format(
-        k, counts[k]) for k in sorted(counts.keys()))
-    print("Extensions: {0}".format(count_display))
-    # print out the shell commands being run on each file as they are run
-    print("\nPerforming metadata analysis on {0} files ...\n".format(len(filelist)))
-    for i, f in enumerate(filelist):
-        f.update({'modtime': modification_time(f['fullpath'])})
-        additional_meta = exec_shell_command(i, f['fullpath'])
-        f.update(additional_meta)
-    # print a final report on the files in the directory searched
-    print("\nDirectory Report on {0}:".format(fullpath))
-    report = write_report(filelist)
-    report_to_file(d, report)
+    filelist = listfiles(fullpath, filter_ext)
+    total_bytes = 0
     
-def report_to_file(dirname, data):
-    outpath = '/Users/westgard/Desktop/results/{0}.txt'.format(dirname)
-    with open(outpath, 'w') as outfile:
-        for line in data:
-            outfile.write("\t".join([str(i) for i in line]))
-            outfile.write("\n")
-
+    with open(out_temp, 'a+') as outfile:
+        outfile.write("\t".join([x.upper() for x in header]) + "\n")
+        print("\nPerforming metadata analysis on {0} files ...\n".format(len(filelist)))
+        for i, f in enumerate(filelist):
+            result = [f]                            # filename
+            bytes = os.path.getsize(f)
+            result.append(bytes)                    # bytes
+            total_bytes += bytes
+            result.append(modification_time(f))     # modification time
+            imagemeta = exec_shell_command(i,f)     # get image metadata from exiftool
+            for m in ['XResolution', 'YResolution', 
+                      'ImageWidth', 'ImageHeight']: 
+                try:
+                    result.append(imagemeta[m])     # append these four values or
+                except KeyError:
+                    result.append("[none]")         # 'none' if not available
+            outfile.write("\t".join([str(r) for r in result]) + "\n")
+    
+    print("\nTotal: {0} bytes, or {1} for {2} files.".format(total_bytes,
+                                                             human_readable_size(total_bytes),
+                                                             len(filelist)))
+    counts = count_by_ext(filelist)
+    count_display = ", ".join(".{0} ({1})".format(k, counts[k]) for k in sorted(counts.keys()))
+    print("Extensions: {0}".format(count_display))
+    print("Completed scan of", fullpath)
+    print("Moving {0} to {1}".format(out_temp, out_final))
+    os.rename(out_temp, out_final)
+    
 if __name__ == "__main__":
-    print("\n\n*** FILE REPORTER ***")
-    root = sys.argv[1]
-    subdirs = os.walk(root).__next__()[1]
-    dirs_to_search = subdirs
+    searchroot = os.path.abspath(sys.argv[1])
+    outpath = os.path.abspath(sys.argv[2])
+    filter_ext = sys.argv[3]
+    print("\n*** FILE REPORTER ***")
+    print("Search path = ", searchroot)
+    print("Storing results in ", outpath)
+    alldirs = [i for i in os.listdir(searchroot) if os.path.isdir(os.path.join(searchroot, i))]
+    completed_dirs = [os.path.splitext(n)[0] for n in os.listdir(outpath)]
+    print("\nDirectory listing progress:")
+    print("===========================")
+    for dir in alldirs:
+        print(dir.ljust(25), dir in completed_dirs)
+    dirs_to_search = filter_completed_dirs(alldirs, completed_dirs)
     for d in dirs_to_search:
-        directory_report(root, d)
-        print("\n", "*" * 100, "\n")
+        report_on_directory(searchroot, d, os.path.dirname(outpath))
         
