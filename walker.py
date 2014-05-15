@@ -184,11 +184,12 @@ if __name__ == "__main__":
     print("Storing results in ", outpath)
     alldirs = [i for i in os.listdir(searchroot) if os.path.isdir(os.path.join(searchroot, i))]
     completed_dirs = [os.path.splitext(n)[0] for n in os.listdir(outpath)]
-    print("\nDirectory listing progress:")
-    print("===========================")
-    for dir in alldirs:
-        print(dir.ljust(25), dir in completed_dirs)
+
     dirs_to_search = filter_completed_dirs(alldirs, completed_dirs)
     for d in dirs_to_search:
+        print("\nDirectory listing progress:")
+        print("===========================")
+        for dir in alldirs:
+            print(dir.ljust(25), dir in completed_dirs)
         report_on_directory(searchroot, d, os.path.dirname(outpath))
         
