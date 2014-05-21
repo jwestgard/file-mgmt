@@ -59,8 +59,12 @@ def listfiles(path, filter_ext):
         except IndexError:
             pass
         for f in files:
-            print("  •", f)
-            result.append(os.path.join(root, f))
+        	path = os.path.join(root, f)
+        	if is_symlink(path):
+        		print("{0} => symlink; skipping...".format(path))
+        	else:
+	            print("  •", f)
+    	        result.append(path)
     return result
 
 def is_number(s):
@@ -69,6 +73,12 @@ def is_number(s):
         return True
     except ValueError:
         return False
+        
+def is_symlink(f):
+    if os.path.islink(f):
+    	return True
+    else:
+    	return False
     
 def modification_time(filename):
     t = os.path.getmtime(filename)
@@ -184,12 +194,11 @@ if __name__ == "__main__":
     print("Storing results in ", outpath)
     alldirs = [i for i in os.listdir(searchroot) if os.path.isdir(os.path.join(searchroot, i))]
     completed_dirs = [os.path.splitext(n)[0] for n in os.listdir(outpath)]
-
     dirs_to_search = filter_completed_dirs(alldirs, completed_dirs)
     for d in dirs_to_search:
         print("\nDirectory listing progress:")
         print("===========================")
         for dir in alldirs:
             print(dir.ljust(25), dir in completed_dirs)
-        report_on_directory(searchroot, d, os.path.dirname(outpath))
+        report_on_directory(searchroot, d, outpath)
         
