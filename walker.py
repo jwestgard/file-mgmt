@@ -46,9 +46,9 @@ def human_readable_size(b):
     else:
         return "{0} KB".format(round(bytes / 2**10), 2)
 
-def listfiles(path, filter_ext):
+def listfiles(searchroot, filter_ext):
     result = []
-    for root, dirs, files in os.walk(path):
+    for root, dirs, files in os.walk(searchroot):
         print("\n", root)
         # prune directories beginning with dot
         dirs[:] = [d for d in dirs if not d.startswith('.')]
@@ -59,12 +59,12 @@ def listfiles(path, filter_ext):
         except IndexError:
             pass
         for f in files:
-        	path = os.path.join(root, f)
-        	if is_symlink(path):
-        		print("{0} => symlink; skipping...".format(path))
-        	else:
-	            print("  •", f)
-    	        result.append(path)
+            filepath = os.path.join(root, f)
+            if is_symlink(filepath):
+                print("{0} => symlink; skipping...".format(filepath))
+            else:
+                print("  •", f)
+                result.append(filepath)
     return result
 
 def is_number(s):
