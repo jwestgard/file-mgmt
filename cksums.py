@@ -1,5 +1,6 @@
-import os
-import hashlib
+#!/usr/bin/env python3
+
+import sys, os, hashlib
 
 def walkdirs(dir):
     for dirpath, dnames, fnames in os.walk(dir):
@@ -20,7 +21,6 @@ def md5(filename):
     return hasher.hexdigest()
 
 def main():
-    directory = input("Enter path: ")
-    walkdirs(directory)
+    walkdirs(sys.argv[1])
     
 main()
